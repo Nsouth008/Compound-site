@@ -146,31 +146,56 @@
   }
 
   function boot() {
-    typeLine("Welcome to the Compound", () => {
-      setTimeout(() => {
-        term.innerHTML += "\n> ";
-        addLink("shop", showShop);
-        term.innerHTML += "\n\nuser@compound:~$ <span class='cursor'></span>";
-      }, 300);
-    });
-  }
+  term.innerHTML = "";
+  typeLine("Welcome to the Compound", () => {
+    setTimeout(() => {
+      appendLine("");
+      appendText("> ");
+      appendLink("shop", showShop);
+      appendLine("");
+      appendLine("");
+      appendCursorLine();
+    }, 200);
+  });
+}
 
-  function addLink(label, fn) {
-    const a = document.createElement("span");
-    a.textContent = label;
-    a.className = "link";
-    a.onclick = fn;
-    term.appendChild(a);
-  }
+  function appendText(text) {
+  term.appendChild(document.createTextNode(text));
+}
+
+function appendLine(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  term.appendChild(div);
+  return div;
+}
+
+function appendLink(label, fn) {
+  const span = document.createElement("span");
+  span.textContent = label;
+  span.className = "link";
+  span.addEventListener("click", fn);
+  term.appendChild(span);
+}
+
+function appendCursorLine() {
+  const div = document.createElement("div");
+  div.innerHTML = `user@compound:~$ <span class="cursor"></span>`;
+  term.appendChild(div);
+}
 
   function showShop() {
-    term.innerHTML = "";
-    term.innerHTML += "shop — US only\n\n";
-    term.innerHTML += "> ";
-    addLink("compound tee — $30", buyTee);
-    term.innerHTML += "\n\n> ";
-    addLink("back", () => location.reload());
-  }
+  term.innerHTML = "";
+  appendLine("shop — US only");
+  appendLine("");
+  appendText("> ");
+  appendLink("compound tee — $30", buyTee);
+  appendLine("");
+  appendLine("");
+  appendText("> ");
+  appendLink("back", boot);
+  appendLine("");
+}
 
   async function buyTee() {
     const res = await fetch("/api/create-checkout-session", {
