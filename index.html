@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>COMPOUND</title>
+
+  <style>
+    :root {
+      --green: #39ff14;
+      --bg: #020402;
+      --dim: rgba(57,255,20,.55);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== LOCK SCREEN ===== */
+    #lock {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .lockBox {
+      border: 1px solid var(--dim);
+      padding: 20px;
+      width: min(480px, 90vw);
+      background: #000;
+    }
+
+    .lockBox h1 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+    }
+
+    .lockBox input {
+      width: 100%;
+      background: #000;
+      color: var(--green);
+      border: 1px solid var(--dim);
+      padding: 10px;
+      margin-top: 10px;
+      font-family: inherit;
+      letter-spacing: 2px;
+    }
+
+    .lockHint {
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--dim);
+    }
+
+    /* ===== TERMINAL ===== */
+    #terminal {
+      padding: 24px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1em;
+      background: var(--green);
+      animation: blink 1s steps(2, start) infinite;
+      vertical-align: bottom;
+    }
+
+    @keyframes blink {
+      to { visibility: hidden; }
+    }
+
+    .link {
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .link:hover {
+      background: rgba(57,255,20,.2);
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock">
+  <div class="lockBox">
+    <h1>user@compound:~$ unlock</h1>
+    <input id="pw" type="password" placeholder="password" />
+    <div class="lockHint">
+      Hint:<br>
+      1) a thing that is composed of two or more separate elements; a mixture.<br>
+      2) an open area enclosed by a fence.
+    </div>
+  </div>
+</div>
+
+<!-- TERMINAL -->
+<div id="terminal"></div>
+
+<script>
+  const PASSWORD = "compound";
+  const lock = document.getElementById("lock");
+  const pw = document.getElementById("pw");
+  const term = document.getElementById("terminal");
+
+  pw.addEventListener("keydown", e => {
+    if (e.key === "Enter") tryUnlock();
+  });
+
+  function tryUnlock() {
+    if (pw.value.trim().toLowerCase() === PASSWORD) {
+      lock.style.display = "none";
+      boot();
+    } else {
+      pw.value = "";
+    }
+  }
+
+  function typeLine(text, cb) {
+    let i = 0;
+    const line = document.createElement("div");
+    term.appendChild(line);
+
+    function tick() {
+      line.textContent = text.slice(0, i++);
+      if (i <= text.length) requestAnimationFrame(tick);
+      else cb && cb();
+    }
+    tick();
+  }
+
+  function boot() {
+    typeLine("Welcome to the Compound", () => {
+      setTimeout(() => {
+        term.innerHTML += "\n> ";
+        addLink("shop", showShop);
+        term.innerHTML += "\n\nuser@compound:~$ <span class='cursor'></span>";
+      }, 300);
+    });
+  }
+
+  function addLink(label, fn) {
+    const a = document.createElement("span");
+    a.textContent = label;
+    a.className = "link";
+    a.onclick = fn;
+    term.appendChild(a);
+  }
+
+  function showShop() {
+    term.innerHTML = "";
+    term.innerHTML += "shop — US only\n\n";
+    term.innerHTML += "> ";
+    addLink("compound tee — $30", buyTee);
+    term.innerHTML += "\n\n> ";
+    addLink("back", () => location.reload());
+  }
+
+  async function buyTee() {
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ productId: "compound_tee", qty: 1 }],
+        successUrl: location.href,
+        cancelUrl: location.href
+      })
+    });
+
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+    else alert("Stripe error");
+  }
+</script>
+
+</body>
+</html>
