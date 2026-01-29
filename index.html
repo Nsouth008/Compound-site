@@ -119,6 +119,24 @@
   const pw = document.getElementById("pw");
   const term = document.getElementById("terminal");
 
+const USERNAME_KEY = "compound_username_v1";
+
+function getUsername() {
+  return localStorage.getItem(USERNAME_KEY) || "user";
+}
+function setUsername(name) {
+  const clean = String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, ""); // terminal-safe
+  if (!clean) return false;
+  localStorage.setItem(USERNAME_KEY, clean);
+  return true;
+}
+function clearUsername() {
+  localStorage.removeItem(USERNAME_KEY);
+}
+
 const UNLOCK_KEY = "compound_unlocked_v1";
 
 function isUnlocked() {
@@ -174,10 +192,12 @@ function setUnlocked() {
   typeLine("Welcome to the Compound", () => {
     setTimeout(() => {
       appendLine("");
-      appendText("> ");
-      appendLink("shop", showShop);
-      appendLine("");
-      appendLine("");
+     appendText("> ");
+appendLink("shop", showShop);
+appendLine("");
+appendText("> ");
+appendLink("account", showAccount);
+appendLine("");
       appendCursorLine();
     }, 200);
   });
@@ -213,7 +233,7 @@ function appendLink(label, fn) {
 
 function appendCursorLine() {
   const div = document.createElement("div");
-  div.innerHTML = `user@compound:~$ <span class="cursor"></span>`;
+  div.innerHTML = `${getUsername()}@compound:~$ <span class="cursor"></span>`;
   term.appendChild(div);
 }
 
@@ -228,6 +248,65 @@ function appendCursorLine() {
   appendText("> ");
   appendLink("back", boot);
   appendLine("");
+}
+
+function showAccount() {
+  term.innerHTML = "";
+
+  appendLine("account — create_login");
+  appendLine("");
+  appendLine(`current_user: ${getUsername()}@compound`);
+  appendLine("");
+
+  // Create/login form (terminal style)
+  const form = document.createElement("div");
+  form.className = "line";
+  form.innerHTML = `> username: <input id="uname" style="
+      background:#000;color:var(--g);
+      border:1px solid rgba(57,255,20,.22);
+      padding:8px 10px;border-radius:10px;
+      font-family:inherit;letter-spacing:1px;
+      width:min(320px,80vw)
+    " placeholder="ex: neonrunner" autocomplete="off" /> 
+    <span class="tlink" id="saveUser" style="margin-left:10px">save</span>`;
+  term.appendChild(form);
+
+  appendLine("");
+  appendText("> ");
+  appendLink("logout", () => {
+    clearUsername();
+    boot();
+  });
+  appendLine("");
+  appendText("> ");
+  appendLink("back", boot);
+  appendLine("");
+  appendLine("");
+
+  appendCursorLine();
+
+  const input = document.getElementById("uname");
+  const save = document.getElementById("saveUser");
+
+  function doSave() {
+    const ok = setUsername(input.value);
+    if (!ok) {
+      appendLine("error: invalid_username (use letters/numbers . _ -)");
+      appendCursorLine();
+      return;
+    }
+    boot(); // rerender with new prompt
+  }
+
+  save.addEventListener("click", doSave);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      doSave();
+    }
+  });
+
+  setTimeout(() => input.focus(), 50);
 }
 
   async function buyTee() {
