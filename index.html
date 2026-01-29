@@ -119,18 +119,29 @@
   const pw = document.getElementById("pw");
   const term = document.getElementById("terminal");
 
+const UNLOCK_KEY = "compound_unlocked_v1";
+
+function isUnlocked() {
+  return localStorage.getItem(UNLOCK_KEY) === "1";
+}
+
+function setUnlocked() {
+  localStorage.setItem(UNLOCK_KEY, "1");
+}
+
   pw.addEventListener("keydown", e => {
     if (e.key === "Enter") tryUnlock();
   });
 
   function tryUnlock() {
-    if (pw.value.trim().toLowerCase() === PASSWORD) {
-      lock.style.display = "none";
-      boot();
-    } else {
-      pw.value = "";
-    }
+  if (pw.value.trim().toLowerCase() === PASSWORD) {
+    setUnlocked();
+    lock.style.display = "none";
+    boot();
+  } else {
+    pw.value = "";
   }
+}
 
   function typeLine(text, cb) {
     let i = 0;
@@ -147,6 +158,19 @@
 
   function boot() {
   term.innerHTML = "";
+
+  const url = new URL(window.location.href);
+  const status = url.searchParams.get("status");
+
+  // If Stripe sent us back with success, show thank-you then go to shop
+  if (status === "success") {
+    // clean the URL so refreshing doesn't re-trigger success screen
+    url.searchParams.delete("status");
+    window.history.replaceState({}, "", url.pathname + url.hash);
+    showSuccessThenShop();
+    return;
+  }
+
   typeLine("Welcome to the Compound", () => {
     setTimeout(() => {
       appendLine("");
@@ -156,6 +180,15 @@
       appendLine("");
       appendCursorLine();
     }, 200);
+  });
+}
+
+function showSuccessThenShop() {
+  term.innerHTML = "";
+  typeLine("order placed, thank you for your purchase!", () => {
+    setTimeout(() => {
+      showShop();
+    }, 1200);
   });
 }
 
@@ -198,20 +231,29 @@ function appendCursorLine() {
 }
 
   async function buyTee() {
-    const res = await fetch("/api/create-checkout-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: [{ productId: "compound_tee", qty: 1 }],
-        successUrl: location.href,
-        cancelUrl: location.href
-      })
-    });
+  const base = window.location.origin + window.location.pathname;
 
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-    else alert("Stripe error");
-  }
+  const res = await fetch("/api/create-checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      items: [{ productId: "compound_tee", qty: 1 }],
+      successUrl: base + "?status=success",
+      cancelUrl: base + "#shop"
+    })
+  });
+
+  const data = await res.json();
+  if (data.url) window.location.href = data.url;
+  else alert("Stripe error");
+}
+
+// Auto-unlock if user already unlocked before
+if (isUnlocked()) {
+  lock.style.display = "none";
+  boot();
+}
+
 </script>
 
 </body>
