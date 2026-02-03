@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>COMPOUND</title>
@@ -114,6 +115,15 @@
 <div id="terminal"></div>
 
 <script>
+// ✅ put your real values here
+const SUPABASE_URL = "https://YOURPROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_ANON_PUBLIC_KEY";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let sessionUser = null;   // auth user
+let profile = null;       // profiles row
+
   const PASSWORD = "compound";
   const lock = document.getElementById("lock");
   const pw = document.getElementById("pw");
@@ -233,7 +243,7 @@ function appendLink(label, fn) {
 
 function appendCursorLine() {
   const div = document.createElement("div");
-  div.innerHTML = `${getUsername()}@compound:~$ <span class="cursor"></span>`;
+  div.innerHTML = `${promptName()} <span class="cursor"></span>`;
   term.appendChild(div);
 }
 
@@ -308,6 +318,35 @@ function showAccount() {
 
   setTimeout(() => input.focus(), 50);
 }
+
+async function refreshAuthState() {
+  const { data } = await supabase.auth.getSession();
+  sessionUser = data?.session?.user || null;
+
+  if (!sessionUser) {
+    profile = null;
+    return;
+  }
+
+  const { data: p, error } = await supabase
+    .from("profiles")
+    .select("username,bio,id")
+    .eq("id", sessionUser.id)
+    .single();
+
+  if (error) {
+    // profile might not exist yet (new user)
+    profile = null;
+    return;
+  }
+  profile = p;
+}
+
+function promptName() {
+  // terminal prompt uses username if logged in + profile exists
+  return (profile?.username || "user") + "@compound:~$";
+}
+
 
   async function buyTee() {
   const base = window.location.origin + window.location.pathname;
